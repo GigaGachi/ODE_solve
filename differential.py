@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import scipy 
 import math
 def func(u,t):
+    #функция правой части уравнения
     y = np.array([u[1],t*t*u[0]],dtype=np.float32)  
     return y
 def ODE_solve_euler(u0,M,t0,tend,f):
