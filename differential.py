@@ -6,6 +6,9 @@ def func(u,t):
     #функция правой части уравнения
     y = np.array([u[1],t*t*u[0]],dtype=np.float32)  
     return y
+def Jacobian(u,t):
+    #якобиан правой части уравнения с учетом автономизации (последняя строка всегда нулевая)
+    return np.array([[10*t-20*u[0],10*u[0]],[0,0]],dtype = np.float32)
 def ODE_solve_euler(u0,M,t0,tend,f):
     #схема эйлера
     tau = (tend-t0)/M
@@ -86,3 +89,18 @@ def ODE_solve_ERK2_qu(u0,t0,tend,f,tau,Num_points):
 def delta_l(y,t):
     #возвращает массив длин дуг разности двух соседних точек
     return [sqrt((y[i+1][0]-y[i][0])**2+(t[i+1]-t[i])**2) for i in range(len(t)-1)]
+def ODE_solve_ROS(u0,M,t0,tend,f,alpha):
+    #Cхема розенброка первого порядка с произвольным коэфициентом альфа
+    tau = (tend-t0)/M
+    t = np.zeros(M)
+    t[0] = t0
+    shape_ = len(u0)
+    u = np.zeros((M,shape_),np.float32)
+    u[0] = u0
+    for i in range(M-1):
+        A = np.eye(shape_+1) - (alpha)*tau*Jacobian(u[i],t[i])
+        B = np.concatenate((f(u[i],t[i] + tau/2),[1])) 
+        w = np.linalg.solve(A,B).real
+        u[i+1] = u[i] + tau*w[0:shape_]
+        t[i+1] = t[i] + tau
+    return u,t
