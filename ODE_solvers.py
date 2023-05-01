@@ -4,7 +4,7 @@ import scipy
 from math import sqrt
 def func(u,t):
     #функция правой части уравнения
-    y = np.array([u[1],t*t*u[0]],dtype=np.float32)  
+    y = np.array([u[0]*(t - u[0])],dtype=np.float32)  
     return y
 def Jacobian(u,t):
     #якобиан правой части уравнения с учетом автономизации (последняя строка всегда нулевая)
@@ -104,3 +104,48 @@ def ODE_solve_ROS(u0,M,t0,tend,f,alpha):
         u[i+1] = u[i] + tau*w[0:shape_]
         t[i+1] = t[i] + tau
     return u,t
+
+def DichotomyMethod(f,eps,N_max,x_l,x_r):
+    #Метод дихотомии
+    gamma = np.zeros(N_max)
+    function_value = np.zeros(N_max)
+    gamma[0] = -x_l
+    gamma[1] = x_r
+    function_value[0] = f(gamma[0])
+    function_value[1] = f(gamma[1])
+    s = 1
+    while abs(gamma[s] - gamma[s-1])>eps:
+        gamma[s+1] = (gamma[s] + gamma[s-1])/2
+        function_value[s+1] = f(gamma[s+1])
+        if function_value[s+1]*function_value[s-1] < 0:
+            gamma[s] = gamma[s-1]
+            function_value[s] = function_value[s-1]
+        elif function_value[s+1] == 0:
+            s = s+1
+            break
+        s = s + 1
+    return gamma[s]
+class EDE_solver_ROS_DCH:
+    #Решение краевой задачи методом стрельбы алгоритмом розенброка и дихотомии
+    def __init__(self,ul,ur,M,t0,tend,f,alpha,eps,N_max,x_l,x_r):
+        self.ul = ul
+        self.ur = ur
+        self.M = M
+        self.t0 = t0
+        self.tend = tend
+        self.f = f
+        self.alpha = alpha
+        self.eps = eps
+        self.N_max = N_max
+        self.x_l = x_l
+        self.x_r = x_r
+    def f_gamma(self,gamma):
+        u,t = ODE_solve_ROS(np.array([self.ul,gamma]),self.M,self.t0,self.tend,self.f,self.alpha)
+        return u[-1][0] - self.u_r
+    def get_gamma(self):
+        gamma = DichotomyMethod(self.f_gamma,self.eps,self.N_max,self.x_r,self.x_l)
+        return gamma
+    def solve(self,gamma):
+        u,t = ODE_solve_ROS(np.array([self.ul,gamma]),self.M,self.t0,self.tend,self.f,self.alpha)
+        return u,t
+
